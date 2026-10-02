@@ -44,3 +44,9 @@ build/
 Thumbs.db
 .vscode/
 .idea/
+
+# Local guides & PDFs
+IntellMeet_Team_Workflow_Guide.pdf
+TEAM_WORKFLOW_GUIDE.html
+scripts/generate_pdf_guide.py
+
