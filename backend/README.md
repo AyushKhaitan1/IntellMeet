@@ -88,7 +88,7 @@ node scripts/test-api.js
 
 ## 🤝 Team Member Integration Guides
 
-### 🎨 1. For Vaishali (Frontend Lead – React 19 + TypeScript + Vite)
+### 🎨 1. For Vaishali (Frontend – React 19 + TypeScript + Vite)
 
 All endpoints return a standardized JSON envelope:
 ```json
@@ -132,7 +132,7 @@ All endpoints return a standardized JSON envelope:
 
 ---
 
-### 🎙️ 2. For Rishika (WebRTC + Socket.io + AI Lead)
+### 🎙️ 2. For Rishika (WebRTC + Socket.io + AI)
 
 The backend provides a complete Socket.IO server on `http://localhost:5000` with the following event contracts:
 
@@ -175,7 +175,7 @@ The backend provides a complete Socket.IO server on `http://localhost:5000` with
 
 ---
 
-### 🚢 3. For Vignesh (DevOps + Testing + Deployment Lead)
+### 🚢 3. For Vignesh (DevOps + Testing + Deployment)
 
 - **Health Probe:** `GET /api/v1/health`
   - Returns `200` with detailed system metrics (MongoDB connection state, memory RSS/heap, uptime, version) for Kubernetes Liveness/Readiness probes and AWS/Render health checks.

@@ -36,7 +36,7 @@ const startServer = async () => {
     logger.info(`🚀 IntellMeet Backend Server is running on port ${PORT}`);
     logger.info(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
     logger.info(`🩺 Health Check: http://localhost:${PORT}/api/v1/health`);
-    logger.info(`👥 Role: Ayush (Backend + Database Lead)`);
+    logger.info(`👥 Module: Backend & Database API`);
     logger.info(`=======================================================`);
   });
 

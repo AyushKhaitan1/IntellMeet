@@ -11,10 +11,10 @@ async function runTests() {
   let actionItemId = '';
 
   const testUser = {
-    name: 'Ayush Backend Lead',
+    name: 'Ayush',
     email: `ayush_${Date.now()}@intellmeet.com`,
     password: 'Password@123',
-    title: 'Lead Systems Architect',
+    title: 'Backend Engineer',
     department: 'Core Platform'
   };
 
@@ -59,7 +59,7 @@ async function runTests() {
     method: 'PUT',
     headers: authHeaders,
     body: JSON.stringify({
-      bio: 'Leading backend architecture for IntellMeet enterprise platform.',
+      bio: 'Backend and database engineer for IntellMeet platform.',
       preferences: { theme: 'dark', audioMutedDefault: false }
     })
   });

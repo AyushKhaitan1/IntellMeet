@@ -19,7 +19,7 @@
     "mongodb",
     "mongoose"
   ],
-  "author": "Ayush (Backend & Database Lead) - Zidio Development",
+  "author": "Ayush (Backend + Database) - Zidio Development",
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^3.0.2",
