@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "jest --detectOpenHandles --forceExit"
+    "test": "node --test tests/api.test.js",
+    "test:integration": "node scripts/test-api.js"
   },
   "keywords": [
     "intellmeet",

@@ -1,6 +1,6 @@
 # 🤖 IntellMeet – AI-Powered Enterprise Meeting & Collaboration Platform
 
-> **Zidio Development Internship Project — March/April 2026**  
+> **Zidio Development Internship Project — Sept/Oct 2026**  
 > **Production-Grade MERN Full-Stack System with AI Intelligence**  
 > **Prepared for:** Zidio Development – Web Development (MERN) Domain  
 

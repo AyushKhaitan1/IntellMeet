@@ -1,6 +1,6 @@
 # 🤖 IntellMeet – Enterprise Backend & Database API
 
-> **Role:** Ayush (Backend + Database Lead)  
+> **Role:** Ayush (Backend + Database)  
 > **Project:** IntellMeet – AI-Powered Enterprise Meeting & Collaboration Platform  
 > **Domain:** Zidio Development – Web Development (MERN) Domain  
 > **Version:** 2.0 – Industry Edition  
