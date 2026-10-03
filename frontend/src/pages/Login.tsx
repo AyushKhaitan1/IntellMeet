@@ -18,14 +18,23 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setLoading(true);
+
     try {
       const res = await loginUser({ email, password });
+
+      const { user, accessToken } = res.data.data;
+
       login(
-        { _id: res.data._id, name: res.data.name, email: res.data.email },
-        res.data.token
+        {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+        },
+        accessToken
       );
+
       navigate("/dashboard");
-    } catch (err) {                                  // CHANGE 4: whole catch block replaced
+    } catch (err) {
       if (axios.isAxiosError(err)) {
         if (err.code === "ERR_NETWORK") {
           setError("Server not reachable yet — backend isn't running.");
@@ -42,13 +51,31 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded-xl shadow-md w-96">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white p-8 rounded-xl shadow-md w-96"
+      >
         <h1 className="text-2xl font-bold mb-6">Welcome Back</h1>
 
-        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+        {error && (
+          <p className="text-red-500 text-sm mb-4">
+            {error}
+          </p>
+        )}
 
-        <Input label="Email" type="email" value={email} onChange={setEmail} />
-        <Input label="Password" type="password" value={password} onChange={setPassword} />
+        <Input
+          label="Email"
+          type="email"
+          value={email}
+          onChange={setEmail}
+        />
+
+        <Input
+          label="Password"
+          type="password"
+          value={password}
+          onChange={setPassword}
+        />
 
         <button
           type="submit"
@@ -59,7 +86,10 @@ export default function Login() {
         </button>
 
         <p className="text-sm text-gray-500 mt-4 text-center">
-          Don't have an account? <Link to="/signup" className="text-blue-600">Sign up</Link>
+          Don't have an account?{" "}
+          <Link to="/signup" className="text-blue-600">
+            Sign up
+          </Link>
         </p>
       </form>
     </div>
