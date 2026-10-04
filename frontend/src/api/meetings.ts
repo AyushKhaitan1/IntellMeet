@@ -3,8 +3,10 @@ import api from "./axios";
 export interface Meeting {
   _id: string;
   title: string;
+  description?: string;
   status: "scheduled" | "live" | "ended";
-  meetingCode: string;
+  meetingCode?: string;
+  roomId?: string;
 }
 
 export const getMeetings = async (): Promise<Meeting[]> => {
