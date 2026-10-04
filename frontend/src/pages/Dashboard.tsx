@@ -61,8 +61,8 @@ export default function Dashboard() {
             onClick={() =>
               navigate(
                 meeting.status === "ended"
-                  ? `/meeting/${meeting.roomId}/summary`
-                  : `/meeting/${meeting.roomId}`
+                  ? `/meeting/${meeting._id}/summary`
+                  : `/meeting/${meeting._id}`
               )
             }
             className="border rounded-lg p-4 cursor-pointer hover:bg-gray-50 bg-white"

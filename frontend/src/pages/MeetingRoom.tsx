@@ -11,7 +11,7 @@ interface RemotePeer {
 }
 
 export default function MeetingRoom() {
-  const { roomId } = useParams();
+  const { id } = useParams();
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
@@ -75,7 +75,7 @@ export default function MeetingRoom() {
 
     socket.on("connect", () => {
       setConnectionStatus("connected to server");
-      socket.emit("join-room", { roomId }, (res: { error?: string }) => {
+      socket.emit("join-room", { id }, (res: { error?: string }) => {
         if (res?.error) setConnectionStatus(`join failed: ${res.error}`);
         else setConnectionStatus("joined room");
       });
@@ -95,7 +95,7 @@ export default function MeetingRoom() {
       socket.off("signal");
       socket.off("peer-left");
     };
-  }, [roomId]);
+  }, [id]);
 
   const toggleMic = () => {
     streamRef.current?.getAudioTracks().forEach((track) => {
@@ -140,7 +140,7 @@ export default function MeetingRoom() {
 
   return (
     <div className="p-4">
-      <h1 className="text-lg font-semibold mb-1">Meeting: {roomId}</h1>
+      <h1 className="text-lg font-semibold mb-1">Meeting: {id}</h1>
       <p className="text-sm text-gray-500 mb-4">Status: {connectionStatus}</p>
 
       {error && <p className="text-red-500 mb-4">{error}</p>}
