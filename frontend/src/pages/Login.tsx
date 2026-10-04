@@ -49,38 +49,6 @@ export default function Login() {
     }
   };
 
-  const handleDemoLogin = async () => {
-    setEmail("demo@intellmeet.com");
-    setPassword("Password@123");
-    setError("");
-    setLoading(true);
-
-    try {
-      const res = await loginUser({ email: "demo@intellmeet.com", password: "Password@123" });
-      const token = res.data.data?.accessToken || res.data.accessToken || res.data.token;
-      const user = res.data.data?.user || res.data.user || res.data;
-
-      login(
-        {
-          _id: user._id || user.id,
-          name: user.name || "Alex Morgan",
-          email: user.email || "demo@intellmeet.com",
-        },
-        token
-      );
-
-      navigate("/dashboard");
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.message || "Demo login failed");
-      } else {
-        setError("Demo login failed");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 px-4">
       <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-100">
@@ -102,22 +70,6 @@ export default function Login() {
             {error}
           </div>
         )}
-
-        {/* 1-Click Quick Demo Login Button */}
-        <button
-          type="button"
-          onClick={handleDemoLogin}
-          disabled={loading}
-          className="w-full mb-5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white py-2.5 px-4 rounded-xl font-semibold text-sm hover:from-indigo-700 hover:to-violet-700 transition shadow-md shadow-indigo-100 flex items-center justify-center gap-2"
-        >
-          <span>⚡</span>
-          <span>{loading ? "Signing in..." : "Instant Demo Login (Evaluator Mode)"}</span>
-        </button>
-
-        <div className="relative flex items-center justify-center mb-5">
-          <div className="border-t border-slate-200 w-full"></div>
-          <span className="bg-white px-3 text-xs text-slate-400 uppercase font-medium">Or enter credentials</span>
-        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
