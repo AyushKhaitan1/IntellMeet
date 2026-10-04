@@ -36,14 +36,18 @@ export const register = async (req, res, next) => {
 
     const userResponse = user.toJSON();
 
-    return res
-      .status(201)
-      .json(
-        ApiResponse.created(
-          { user: userResponse, accessToken, refreshToken },
-          'User registered successfully'
-        )
-      );
+    return res.status(201).json({
+      success: true,
+      statusCode: 201,
+      message: 'User registered successfully',
+      token: accessToken,
+      accessToken,
+      refreshToken,
+      _id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      data: { user: userResponse, accessToken, refreshToken }
+    });
   } catch (error) {
     next(error);
   }
@@ -77,14 +81,18 @@ export const login = async (req, res, next) => {
 
     const userResponse = user.toJSON();
 
-    return res
-      .status(200)
-      .json(
-        ApiResponse.success(
-          { user: userResponse, accessToken, refreshToken },
-          'Logged in successfully'
-        )
-      );
+    return res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: 'Logged in successfully',
+      token: accessToken,
+      accessToken,
+      refreshToken,
+      _id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      data: { user: userResponse, accessToken, refreshToken }
+    });
   } catch (error) {
     next(error);
   }

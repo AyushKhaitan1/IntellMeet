@@ -3,6 +3,22 @@ import { Workspace } from '../models/Workspace.js';
 import { ApiError } from '../utils/apiError.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 
+// Helper to get or create a default workspace for a user
+const getOrCreateDefaultWorkspace = async (userId) => {
+  let ws = await Workspace.findOne({ 'members.user': userId });
+  if (!ws) {
+    const slug = `workspace-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    ws = await Workspace.create({
+      name: 'Default Workspace',
+      slug,
+      description: 'Workspace for IntellMeet tasks',
+      owner: userId,
+      members: [{ user: userId, role: 'owner', joinedAt: new Date() }]
+    });
+  }
+  return ws;
+};
+
 export const createTask = async (req, res, next) => {
   try {
     const {
@@ -17,15 +33,19 @@ export const createTask = async (req, res, next) => {
       tags
     } = req.body;
 
-    const workspaceDoc = await Workspace.findById(workspace);
-    if (!workspaceDoc) {
-      return next(ApiError.notFound('Target workspace not found'));
+    let targetWorkspaceId = workspace;
+    if (!targetWorkspaceId) {
+      const defaultWs = await getOrCreateDefaultWorkspace(req.user._id);
+      targetWorkspaceId = defaultWs._id;
     }
+
+    // Normalize status from "in-progress" to "in_progress"
+    const normalizedStatus = status === 'in-progress' ? 'in_progress' : status || 'todo';
 
     // Get max order in status column
     const highestOrderTask = await Task.findOne({
-      workspace,
-      status: status || 'todo'
+      workspace: targetWorkspaceId,
+      status: normalizedStatus
     }).sort({ order: -1 });
 
     const order = highestOrderTask ? highestOrderTask.order + 1 : 0;
@@ -33,9 +53,9 @@ export const createTask = async (req, res, next) => {
     const task = await Task.create({
       title,
       description: description || '',
-      workspace,
+      workspace: targetWorkspaceId,
       meeting: meeting || null,
-      status: status || 'todo',
+      status: normalizedStatus,
       priority: priority || 'medium',
       assignee: assignee || null,
       reporter: req.user._id,
@@ -47,9 +67,45 @@ export const createTask = async (req, res, next) => {
     await task.populate('assignee', 'name email avatar title');
     await task.populate('reporter', 'name email avatar');
 
-    return res
-      .status(201)
-      .json(ApiResponse.created(task, 'Task created successfully'));
+    const formattedTask = {
+      _id: task._id.toString(),
+      title: task.title,
+      status: task.status === 'in_progress' ? 'in-progress' : task.status,
+      assignee: task.assignee?.name || 'Unassigned',
+      ...task.toObject()
+    };
+
+    if (req.originalUrl.startsWith('/api/tasks') && !req.originalUrl.startsWith('/api/v1/tasks')) {
+      return res.status(201).json(formattedTask);
+    }
+
+    return res.status(201).json(ApiResponse.created(task, 'Task created successfully'));
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAllTasks = async (req, res, next) => {
+  try {
+    const tasks = await Task.find({
+      $or: [{ reporter: req.user._id }, { assignee: req.user._id }]
+    })
+      .populate('assignee', 'name email avatar')
+      .populate('reporter', 'name email avatar')
+      .sort({ createdAt: -1 });
+
+    const formattedTasks = tasks.map((t) => ({
+      _id: t._id.toString(),
+      title: t.title,
+      status: t.status === 'in_progress' ? 'in-progress' : t.status,
+      assignee: t.assignee?.name || 'Unassigned'
+    }));
+
+    if (req.originalUrl.startsWith('/api/tasks') && !req.originalUrl.startsWith('/api/v1/tasks')) {
+      return res.status(200).json(formattedTasks);
+    }
+
+    return res.status(200).json(ApiResponse.success(formattedTasks, 'Tasks retrieved'));
   } catch (error) {
     next(error);
   }
@@ -73,14 +129,10 @@ export const getTasksByWorkspace = async (req, res, next) => {
         in_review: tasks.filter((t) => t.status === 'in_review'),
         done: tasks.filter((t) => t.status === 'done')
       };
-      return res
-        .status(200)
-        .json(ApiResponse.success(kanbanBoard, 'Kanban tasks retrieved'));
+      return res.status(200).json(ApiResponse.success(kanbanBoard, 'Kanban tasks retrieved'));
     }
 
-    return res
-      .status(200)
-      .json(ApiResponse.success(tasks, 'Tasks retrieved successfully'));
+    return res.status(200).json(ApiResponse.success(tasks, 'Tasks retrieved successfully'));
   } catch (error) {
     next(error);
   }
@@ -89,7 +141,9 @@ export const getTasksByWorkspace = async (req, res, next) => {
 export const updateTask = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { title, description, status, priority, assignee, dueDate, tags, order } = req.body;
+    let { title, description, status, priority, assignee, dueDate, tags, order } = req.body;
+
+    if (status === 'in-progress') status = 'in_progress';
 
     const task = await Task.findById(id);
     if (!task) {
@@ -108,9 +162,19 @@ export const updateTask = async (req, res, next) => {
     await task.save();
     await task.populate('assignee', 'name email avatar title');
 
-    return res
-      .status(200)
-      .json(ApiResponse.success(task, 'Task updated successfully'));
+    const formattedTask = {
+      _id: task._id.toString(),
+      title: task.title,
+      status: task.status === 'in_progress' ? 'in-progress' : task.status,
+      assignee: task.assignee?.name || 'Unassigned',
+      ...task.toObject()
+    };
+
+    if (req.originalUrl.startsWith('/api/tasks') && !req.originalUrl.startsWith('/api/v1/tasks')) {
+      return res.status(200).json(formattedTask);
+    }
+
+    return res.status(200).json(ApiResponse.success(task, 'Task updated successfully'));
   } catch (error) {
     next(error);
   }
@@ -119,7 +183,9 @@ export const updateTask = async (req, res, next) => {
 export const moveTaskStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { status, order } = req.body;
+    let { status, order } = req.body;
+
+    if (status === 'in-progress') status = 'in_progress';
 
     const task = await Task.findById(id);
     if (!task) {
@@ -133,9 +199,7 @@ export const moveTaskStatus = async (req, res, next) => {
 
     await task.save();
 
-    return res
-      .status(200)
-      .json(ApiResponse.success(task, 'Task status moved successfully'));
+    return res.status(200).json(ApiResponse.success(task, 'Task status moved successfully'));
   } catch (error) {
     next(error);
   }
@@ -150,9 +214,7 @@ export const deleteTask = async (req, res, next) => {
       return next(ApiError.notFound('Task not found'));
     }
 
-    return res
-      .status(200)
-      .json(ApiResponse.success(null, 'Task deleted successfully'));
+    return res.status(200).json(ApiResponse.success(null, 'Task deleted successfully'));
   } catch (error) {
     next(error);
   }

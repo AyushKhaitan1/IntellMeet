@@ -6,7 +6,8 @@ import {
   joinMeeting,
   updateMeeting,
   endMeeting,
-  getMeetingHistory
+  getMeetingHistory,
+  getMeetingSummaryByRoomId
 } from '../controllers/meeting.controller.js';
 import { authenticate } from '../middlewares/auth.middleware.js';
 import { validate } from '../middlewares/validate.middleware.js';
@@ -23,6 +24,7 @@ router.get('/', authenticate, getMyMeetings);
 router.get('/history', authenticate, getMeetingHistory);
 router.get('/code/:code', getMeetingByCode);
 router.post('/code/:code/join', validate(joinMeetingSchema), joinMeeting);
+router.get('/:roomId/summary', getMeetingSummaryByRoomId);
 router.put('/:id', authenticate, validate(updateMeetingSchema), updateMeeting);
 router.post('/:id/end', authenticate, endMeeting);
 
