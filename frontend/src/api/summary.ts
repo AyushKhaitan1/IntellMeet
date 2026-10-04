@@ -13,6 +13,9 @@ export interface MeetingSummary {
 export const getMeetingSummary = async (
   roomId: string
 ): Promise<MeetingSummary | null> => {
-  const res = await api.get(`/api/meetings/${roomId}/summary`);
+  const res = await api.get(
+    `/api/v1/meetings/${roomId}/summary`
+  );
+
   return res.data;
 };
