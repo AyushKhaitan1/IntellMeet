@@ -13,7 +13,10 @@ import {
   type TaskStatus,
 } from "../api/tasks";
 
-import { getWorkspaces } from "../api/workspaces";
+import {
+  getWorkspaces,
+  createWorkspace,
+} from "../api/workspaces";
 
 const COLUMNS: {
   key: TaskStatus;
@@ -27,12 +30,12 @@ const COLUMNS: {
 
 export default function TeamBoard() {
   const [title, setTitle] = useState("");
+  const [workspaceName, setWorkspaceName] = useState("");
+  const [workspaceDescription, setWorkspaceDescription] =
+    useState("");
 
   const queryClient = useQueryClient();
 
-  /*
-   * Get the user's workspaces first.
-   */
   const {
     data: workspaces,
     isLoading: workspacesLoading,
@@ -42,16 +45,8 @@ export default function TeamBoard() {
     queryFn: getWorkspaces,
   });
 
-  /*
-   * Use the first workspace returned by the backend.
-   *
-   * We are NOT hard-coding a workspace ID.
-   */
   const workspaceId = workspaces?.[0]?._id;
 
-  /*
-   * Load tasks for the real workspace.
-   */
   const {
     data: tasks,
     isLoading: tasksLoading,
@@ -62,9 +57,23 @@ export default function TeamBoard() {
     enabled: Boolean(workspaceId),
   });
 
-  /*
-   * Create task.
-   */
+  const createWorkspaceMutation = useMutation({
+    mutationFn: () =>
+      createWorkspace(
+        workspaceName.trim(),
+        workspaceDescription.trim() || undefined
+      ),
+
+    onSuccess: () => {
+      setWorkspaceName("");
+      setWorkspaceDescription("");
+
+      queryClient.invalidateQueries({
+        queryKey: ["workspaces"],
+      });
+    },
+  });
+
   const createMutation = useMutation({
     mutationFn: (taskTitle: string) =>
       createTask(taskTitle, workspaceId!),
@@ -78,9 +87,6 @@ export default function TeamBoard() {
     },
   });
 
-  /*
-   * Move task.
-   */
   const statusMutation = useMutation({
     mutationFn: ({
       id,
@@ -97,7 +103,21 @@ export default function TeamBoard() {
     },
   });
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreateWorkspace = (
+    e: React.FormEvent
+  ) => {
+    e.preventDefault();
+
+    if (!workspaceName.trim()) {
+      return;
+    }
+
+    createWorkspaceMutation.mutate();
+  };
+
+  const handleCreate = (
+    e: React.FormEvent
+  ) => {
     e.preventDefault();
 
     if (!title.trim() || !workspaceId) {
@@ -135,22 +155,74 @@ export default function TeamBoard() {
   if (!workspaceId) {
     return (
       <div className="p-6 max-w-5xl mx-auto">
-        <h1 className="text-2xl font-bold mb-4">
+        <h1 className="text-2xl font-bold mb-2">
           Team Workspace
         </h1>
 
-        <p className="text-gray-500">
-          No workspace is available for your account yet.
+        <p className="text-gray-500 mb-6">
+          No workspace exists for your account yet.
+          Create one to start managing team tasks.
         </p>
+
+        <form
+          onSubmit={handleCreateWorkspace}
+          className="max-w-md bg-white border rounded-xl p-5 shadow-sm"
+        >
+          <h2 className="text-lg font-semibold mb-4">
+            Create Workspace
+          </h2>
+
+          <input
+            value={workspaceName}
+            onChange={(e) =>
+              setWorkspaceName(e.target.value)
+            }
+            placeholder="Workspace name"
+            className="w-full border rounded-lg px-3 py-2 mb-3"
+          />
+
+          <textarea
+            value={workspaceDescription}
+            onChange={(e) =>
+              setWorkspaceDescription(e.target.value)
+            }
+            placeholder="Description (optional)"
+            rows={3}
+            className="w-full border rounded-lg px-3 py-2 mb-3"
+          />
+
+          {createWorkspaceMutation.isError && (
+            <p className="text-red-500 text-sm mb-3">
+              Could not create workspace.
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={
+              createWorkspaceMutation.isPending ||
+              !workspaceName.trim()
+            }
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
+          >
+            {createWorkspaceMutation.isPending
+              ? "Creating..."
+              : "Create Workspace"}
+          </button>
+        </form>
       </div>
     );
   }
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">
+      <h1 className="text-2xl font-bold mb-2">
         Team Workspace
       </h1>
+
+      <p className="text-gray-500 mb-6">
+        {workspaces?.[0]?.name}
+      </p>
 
       <form
         onSubmit={handleCreate}
@@ -203,54 +275,56 @@ export default function TeamBoard() {
               </h2>
 
               <div className="space-y-2">
-                {tasksByStatus(
-                  column.key
-                ).map((task) => (
-                  <div
-                    key={task._id}
-                    className="bg-white rounded-lg p-3 shadow-sm"
-                  >
-                    <p className="text-sm font-medium mb-2">
-                      {task.title}
-                    </p>
-
-                    {task.assignee && (
-                      <p className="text-xs text-gray-500 mb-2">
-                        {task.assignee}
-                      </p>
-                    )}
-
-                    <select
-                      value={task.status}
-                      onChange={(e) =>
-                        statusMutation.mutate({
-                          id: task._id,
-                          status:
-                            e.target.value as TaskStatus,
-                        })
-                      }
-                      disabled={
-                        statusMutation.isPending
-                      }
-                      className="text-xs border rounded px-2 py-1 w-full"
+                {tasksByStatus(column.key).map(
+                  (task) => (
+                    <div
+                      key={task._id}
+                      className="bg-white rounded-lg p-3 shadow-sm"
                     >
-                      {COLUMNS.map(
-                        (columnOption) => (
-                          <option
-                            key={
-                              columnOption.key
-                            }
-                            value={
-                              columnOption.key
-                            }
-                          >
-                            {columnOption.label}
-                          </option>
-                        )
+                      <p className="text-sm font-medium mb-2">
+                        {task.title}
+                      </p>
+
+                      {task.assignee && (
+                        <p className="text-xs text-gray-500 mb-2">
+                          {task.assignee}
+                        </p>
                       )}
-                    </select>
-                  </div>
-                ))}
+
+                      <select
+                        value={task.status}
+                        onChange={(e) =>
+                          statusMutation.mutate({
+                            id: task._id,
+                            status:
+                              e.target.value as TaskStatus,
+                          })
+                        }
+                        disabled={
+                          statusMutation.isPending
+                        }
+                        className="text-xs border rounded px-2 py-1 w-full"
+                      >
+                        {COLUMNS.map(
+                          (columnOption) => (
+                            <option
+                              key={
+                                columnOption.key
+                              }
+                              value={
+                                columnOption.key
+                              }
+                            >
+                              {
+                                columnOption.label
+                              }
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </div>
+                  )
+                )}
               </div>
             </div>
           ))}

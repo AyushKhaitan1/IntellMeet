@@ -18,6 +18,13 @@ export interface Task {
   tags?: string[];
 }
 
+interface TasksByStatus {
+  todo: Task[];
+  in_progress: Task[];
+  in_review: Task[];
+  done: Task[];
+}
+
 export const getTasks = async (
   workspaceId: string
 ): Promise<Task[]> => {
@@ -25,7 +32,14 @@ export const getTasks = async (
     `/api/v1/tasks/workspace/${workspaceId}`
   );
 
-  return res.data.data;
+  const tasksByStatus = res.data.data as TasksByStatus;
+
+  return [
+    ...tasksByStatus.todo,
+    ...tasksByStatus.in_progress,
+    ...tasksByStatus.in_review,
+    ...tasksByStatus.done,
+  ];
 };
 
 export const createTask = async (
