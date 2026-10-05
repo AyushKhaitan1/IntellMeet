@@ -1,4 +1,5 @@
 import { Meeting } from '../models/Meeting.js';
+import { MeetingIntelligence } from '../models/MeetingIntelligence.js';
 import { ApiError } from '../utils/apiError.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { cache } from '../config/redis.js';
@@ -31,7 +32,7 @@ export const createMeeting = async (req, res, next) => {
     }
 
     const meeting = await Meeting.create({
-      title,
+      title: title || 'Quick Meeting',
       description: description || '',
       meetingCode,
       passcode: passcode || '',
@@ -48,9 +49,16 @@ export const createMeeting = async (req, res, next) => {
     // Invalidate/cache meeting in Redis
     await cache.set(`meeting:${meetingCode}`, JSON.stringify(meeting), 'EX', 3600);
 
+    const meetingData = meeting.toObject();
+    meetingData.roomId = meeting.meetingCode;
+
+    if (req.originalUrl.startsWith('/api/meetings') && !req.originalUrl.startsWith('/api/v1/meetings')) {
+      return res.status(201).json(meetingData);
+    }
+
     return res
       .status(201)
-      .json(ApiResponse.created(meeting, 'Meeting created successfully'));
+      .json(ApiResponse.created(meetingData, 'Meeting created successfully'));
   } catch (error) {
     next(error);
   }
@@ -58,7 +66,7 @@ export const createMeeting = async (req, res, next) => {
 
 export const getMyMeetings = async (req, res, next) => {
   try {
-    const { status, limit = 20, page = 1 } = req.query;
+    const { status, limit = 50, page = 1 } = req.query;
     const query = {
       $or: [{ host: req.user._id }, { 'participants.user': req.user._id }]
     };
@@ -78,9 +86,19 @@ export const getMyMeetings = async (req, res, next) => {
       Meeting.countDocuments(query)
     ]);
 
+    const mappedMeetings = meetings.map((m) => {
+      const obj = m.toObject();
+      obj.roomId = m.meetingCode;
+      return obj;
+    });
+
+    if (req.originalUrl.startsWith('/api/meetings') && !req.originalUrl.startsWith('/api/v1/meetings')) {
+      return res.status(200).json(mappedMeetings);
+    }
+
     return res.status(200).json(
       ApiResponse.success(
-        meetings,
+        mappedMeetings,
         'Meetings retrieved successfully',
         200,
         {
@@ -112,7 +130,12 @@ export const getMeetingByCode = async (req, res, next) => {
       }
     }
 
-    const meeting = await Meeting.findOne({ meetingCode: cleanCode })
+    const meeting = await Meeting.findOne({
+      $or: [
+        { meetingCode: cleanCode },
+        ...(code.length === 24 ? [{ _id: code }] : [])
+      ]
+    })
       .populate('host', 'name email avatar title')
       .populate('coHosts', 'name email avatar')
       .populate('workspace', 'name slug');
@@ -124,9 +147,12 @@ export const getMeetingByCode = async (req, res, next) => {
     // Refresh cache
     await cache.set(`meeting:${cleanCode}`, JSON.stringify(meeting), 'EX', 300);
 
+    const meetingData = meeting.toObject();
+    meetingData.roomId = meeting.meetingCode;
+
     return res
       .status(200)
-      .json(ApiResponse.success(meeting, 'Meeting details retrieved'));
+      .json(ApiResponse.success(meetingData, 'Meeting details retrieved'));
   } catch (error) {
     next(error);
   }
@@ -135,10 +161,16 @@ export const getMeetingByCode = async (req, res, next) => {
 export const joinMeeting = async (req, res, next) => {
   try {
     const { code } = req.params;
-    const { passcode, displayName } = req.body;
+    const { passcode, displayName } = req.body || {};
     const cleanCode = code.trim().toUpperCase();
 
-    const meeting = await Meeting.findOne({ meetingCode: cleanCode });
+    const meeting = await Meeting.findOne({
+      $or: [
+        { meetingCode: cleanCode },
+        ...(code.length === 24 ? [{ _id: code }] : [])
+      ]
+    });
+
     if (!meeting) {
       return next(ApiError.notFound('Meeting not found'));
     }
@@ -152,19 +184,16 @@ export const joinMeeting = async (req, res, next) => {
       return next(ApiError.unauthorized('Invalid meeting passcode.'));
     }
 
-    // Participant details
     const isHost = req.user ? meeting.host.toString() === req.user._id.toString() : false;
     const participantName = req.user ? req.user.name : displayName || 'Guest Participant';
     const participantEmail = req.user ? req.user.email : '';
     const role = isHost ? 'host' : 'participant';
 
-    // Mark status live if host joins
     if (isHost && meeting.status === 'scheduled') {
       meeting.status = 'live';
       meeting.actualStartTime = new Date();
     }
 
-    // Record participant in meeting
     const participantEntry = {
       user: req.user ? req.user._id : null,
       name: participantName,
@@ -175,8 +204,6 @@ export const joinMeeting = async (req, res, next) => {
 
     meeting.participants.push(participantEntry);
     await meeting.save();
-
-    // Invalidate cache
     await cache.del(`meeting:${cleanCode}`);
 
     return res.status(200).json(
@@ -243,7 +270,6 @@ export const endMeeting = async (req, res, next) => {
     meeting.status = 'ended';
     meeting.actualEndTime = new Date();
 
-    // Calculate participant durations
     meeting.participants = meeting.participants.map((p) => {
       if (!p.leftAt) {
         p.leftAt = new Date();
@@ -278,6 +304,45 @@ export const getMeetingHistory = async (req, res, next) => {
     return res
       .status(200)
       .json(ApiResponse.success(pastMeetings, 'Meeting history retrieved'));
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMeetingSummaryByRoomId = async (req, res, next) => {
+  try {
+    const { roomId } = req.params;
+    const cleanRoomId = roomId ? roomId.trim().toUpperCase() : '';
+
+    let meeting = await Meeting.findOne({
+      $or: [
+        { meetingCode: cleanRoomId },
+        ...(roomId?.length === 24 ? [{ _id: roomId }] : [])
+      ]
+    });
+
+    let summaryText = "Meeting summary is available after the meeting is concluded.";
+    let actionItems = [];
+
+    if (meeting) {
+      const intel = await MeetingIntelligence.findOne({ meeting: meeting._id });
+      if (intel) {
+        if (intel.summary?.overview) {
+          summaryText = intel.summary.overview;
+        }
+        if (intel.extractedActionItems && intel.extractedActionItems.length > 0) {
+          actionItems = intel.extractedActionItems.map((a) => ({
+            task: a.taskTitle,
+            owner: a.assigneeName || 'Unassigned'
+          }));
+        }
+      }
+    }
+
+    return res.status(200).json({
+      summary: summaryText,
+      actionItems
+    });
   } catch (error) {
     next(error);
   }

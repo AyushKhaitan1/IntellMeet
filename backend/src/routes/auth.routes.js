@@ -18,6 +18,7 @@ import {
 const router = Router();
 
 router.post('/register', authLimiter, validate(registerSchema), register);
+router.post('/signup', authLimiter, validate(registerSchema), register);
 router.post('/login', authLimiter, validate(loginSchema), login);
 router.post('/refresh-token', authLimiter, validate(refreshTokenSchema), refreshToken);
 router.post('/logout', authenticate, logout);

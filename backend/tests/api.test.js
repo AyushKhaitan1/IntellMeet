@@ -55,4 +55,95 @@ describe('IntellMeet Backend API Test Suite', () => {
     assert.strictEqual(res.status, 404);
     assert.strictEqual(res.body.success, false);
   });
+
+  // Frontend contract integration tests (Vaishali client compatibility)
+  describe('Frontend Client Compatibility Layer', () => {
+    let authToken = '';
+    let createdRoomId = '';
+    const uniqueEmail = `frontend_test_${Date.now()}@intellmeet.com`;
+
+    test('POST /api/auth/signup returns flat token, _id, name, and email', async () => {
+      const res = await request(app)
+        .post('/api/auth/signup')
+        .send({
+          name: 'Frontend Test User',
+          email: uniqueEmail,
+          password: 'Password@123'
+        });
+
+      assert.strictEqual(res.status, 201);
+      assert.ok(res.body.token, 'Token must be present at top level');
+      assert.ok(res.body._id, 'User _id must be present at top level');
+      assert.strictEqual(res.body.name, 'Frontend Test User');
+      authToken = res.body.token;
+    });
+
+    test('POST /api/auth/login returns flat token and verifies credentials', async () => {
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: uniqueEmail,
+          password: 'Password@123'
+        });
+
+      assert.strictEqual(res.status, 200);
+      assert.ok(res.body.token, 'Token must be returned on login');
+      authToken = res.body.token;
+    });
+
+    test('POST /api/meetings creates meeting with roomId for frontend', async () => {
+      const res = await request(app)
+        .post('/api/meetings')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ title: 'Frontend Sprint Review' });
+
+      assert.strictEqual(res.status, 201);
+      assert.ok(res.body._id, 'Meeting must have _id');
+      assert.ok(res.body.roomId, 'Meeting must have roomId');
+      assert.strictEqual(res.body.title, 'Frontend Sprint Review');
+      createdRoomId = res.body.roomId;
+    });
+
+    test('GET /api/meetings returns array of meetings for dashboard', async () => {
+      const res = await request(app)
+        .get('/api/meetings')
+        .set('Authorization', `Bearer ${authToken}`);
+
+      assert.strictEqual(res.status, 200);
+      assert.ok(Array.isArray(res.body), 'Response must be an Array');
+      assert.ok(res.body.length > 0, 'Must have at least one meeting');
+      assert.ok(res.body[0].roomId, 'Meeting item must have roomId');
+    });
+
+    test('GET /api/meetings/:roomId/summary returns summary and actionItems', async () => {
+      const res = await request(app)
+        .get(`/api/meetings/${createdRoomId}/summary`)
+        .set('Authorization', `Bearer ${authToken}`);
+
+      assert.strictEqual(res.status, 200);
+      assert.ok(typeof res.body.summary === 'string', 'Summary must be a string');
+      assert.ok(Array.isArray(res.body.actionItems), 'actionItems must be an array');
+    });
+
+    test('POST /api/tasks creates task without requiring workspace ID', async () => {
+      const res = await request(app)
+        .post('/api/tasks')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ title: 'Verify WebRTC Streams', status: 'todo' });
+
+      assert.strictEqual(res.status, 201);
+      assert.ok(res.body._id, 'Task must have _id');
+      assert.strictEqual(res.body.title, 'Verify WebRTC Streams');
+    });
+
+    test('GET /api/tasks returns array of tasks for team board', async () => {
+      const res = await request(app)
+        .get('/api/tasks')
+        .set('Authorization', `Bearer ${authToken}`);
+
+      assert.strictEqual(res.status, 200);
+      assert.ok(Array.isArray(res.body), 'Tasks must be an array');
+      assert.ok(res.body.length > 0);
+    });
+  });
 });

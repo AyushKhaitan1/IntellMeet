@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   createTask,
+  getAllTasks,
   getTasksByWorkspace,
   updateTask,
   moveTaskStatus,
@@ -19,7 +20,9 @@ const router = Router();
 router.use(authenticate);
 
 router.post('/', validate(createTaskSchema), createTask);
+router.get('/', getAllTasks);
 router.get('/workspace/:workspaceId', getTasksByWorkspace);
+router.patch('/:id', validate(updateTaskSchema), updateTask);
 router.put('/:id', validate(updateTaskSchema), updateTask);
 router.patch('/:id/move', validate(moveTaskStatusSchema), moveTaskStatus);
 router.delete('/:id', deleteTask);

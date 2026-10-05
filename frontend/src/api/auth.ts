@@ -11,5 +11,8 @@ interface LoginData {
   password: string;
 }
 
-export const signupUser = (data: SignupData) => api.post("/api/auth/signup", data);
-export const loginUser = (data: LoginData) => api.post("/api/auth/login", data);
+export const signupUser = (data: SignupData) =>
+  api.post("/api/v1/auth/register", data);
+
+export const loginUser = (data: LoginData) =>
+  api.post("/api/v1/auth/login", data);

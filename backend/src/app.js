@@ -66,8 +66,9 @@ app.use('/uploads', express.static(path.resolve('uploads')));
 // General API rate limiter
 app.use('/api', apiLimiter);
 
-// API v1 Routes
+// API Routes (Mounted on both /api and /api/v1 for complete frontend compatibility)
 app.use('/api/v1', routes);
+app.use('/api', routes);
 
 // Base welcome endpoint
 app.get('/', (req, res) => {
