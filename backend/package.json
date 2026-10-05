@@ -22,6 +22,7 @@
   "author": "Ayush (Backend + Database) - Zidio Development",
   "license": "ISC",
   "dependencies": {
+    "@huggingface/inference": "^4.13.30",
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.5.1",
     "compression": "^1.7.5",
