@@ -4,6 +4,7 @@ import { Meeting } from '../models/Meeting.js';
 import { Task } from '../models/Task.js';
 import { ApiError } from '../utils/apiError.js';
 import { ApiResponse } from '../utils/apiResponse.js';
+import { logger } from '../utils/logger.js';
 
 export const saveTranscript = async (req, res, next) => {
   try {
@@ -80,28 +81,32 @@ if (!summary || !extractedActionItems) {
     .join('\n');
 
   if (transcriptText.trim()) {
-    const aiResult = await generateMeetingSummary(transcriptText);
-    const parsedResult = JSON.parse(aiResult);
+    try {
+      const aiResult = await generateMeetingSummary(transcriptText);
+      const parsedResult = JSON.parse(aiResult);
 
-    if (!summary) {
-      intelligence.summary = {
-        overview: parsedResult.overview || '',
-        keyPoints: parsedResult.keyPoints || [],
-        decisions: parsedResult.decisions || [],
-      };
+      if (!summary) {
+        intelligence.summary = {
+          overview: parsedResult.overview || '',
+          keyPoints: parsedResult.keyPoints || [],
+          decisions: parsedResult.decisions || [],
+        };
+      }
+
+      if (!extractedActionItems) {
+        intelligence.extractedActionItems = (
+          parsedResult.actionItems || []
+        ).map((item) => ({
+          taskTitle: item.task || '',
+          assigneeName: item.assignee || 'Unassigned',
+          dueDate: null,
+        }));
+      }
+
+      intelligence.aiModelUsed = 'openai/gpt-oss-20b (Hugging Face)';
+    } catch (aiError) {
+      logger.warn(`AI meeting intelligence generation skipped or failed: ${aiError.message}`);
     }
-
-    if (!extractedActionItems) {
-      intelligence.extractedActionItems = (
-        parsedResult.actionItems || []
-      ).map((item) => ({
-        taskTitle: item.task || '',
-        assigneeName: item.assignee || 'Unassigned',
-        dueDate: null,
-      }));
-    }
-
-    intelligence.aiModelUsed = 'openai/gpt-oss-20b (Hugging Face)';
   }
 }
     if (summary) intelligence.summary = summary;

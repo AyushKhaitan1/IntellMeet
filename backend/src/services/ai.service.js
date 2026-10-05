@@ -56,11 +56,14 @@ Return exactly this JSON structure:
     temperature: 0.2,
   });
 
-  const result = response.choices?.[0]?.message?.content;
+  let result = response.choices?.[0]?.message?.content;
 
   if (!result) {
     throw new Error("No AI response received");
   }
 
+  // Strip possible markdown code blocks for reliable JSON parsing
+  result = result.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
   return result;
-}
+}
