@@ -7,6 +7,11 @@ export interface Meeting {
   status: "scheduled" | "live" | "ended";
   meetingCode?: string;
   roomId?: string;
+
+  // Meeting schedule
+  date?: string;
+  startTime?: string;
+  endTime?: string;
 }
 
 export const getMeetings = async (): Promise<Meeting[]> => {
@@ -14,7 +19,18 @@ export const getMeetings = async (): Promise<Meeting[]> => {
   return res.data.data;
 };
 
-export const createMeeting = async (title: string): Promise<Meeting> => {
-  const res = await api.post("/api/v1/meetings", { title });
+export const createMeeting = async (
+  title: string,
+  date: string,
+  startTime: string,
+  endTime: string
+): Promise<Meeting> => {
+  const res = await api.post("/api/v1/meetings", {
+    title,
+    date,
+    startTime,
+    endTime,
+  });
+
   return res.data.data;
 };

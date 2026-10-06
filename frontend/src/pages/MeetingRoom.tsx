@@ -1,13 +1,42 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { getSocket } from "../lib/socket";
 import { PeerManager } from "../lib/PeerManager";
+import { getMeetings, type Meeting } from "../api/meetings";
 import ChatPanel from "../components/ChatPanel";
 import ParticipantList from "../components/ParticipantList";
 
 interface RemotePeer {
   socketId: string;
   stream: MediaStream;
+}
+
+function checkMeetingWindow(meeting?: Meeting): { allowed: boolean; reason: string } {
+  if (!meeting || !meeting.date || !meeting.startTime || !meeting.endTime) {
+    // No schedule saved on this meeting (older meeting) — allow joining anytime.
+    return { allowed: true, reason: "" };
+  }
+
+  const start = new Date(`${meeting.date}T${meeting.startTime}`);
+  const end = new Date(`${meeting.date}T${meeting.endTime}`);
+  const now = new Date();
+
+  if (now < start) {
+    return {
+      allowed: false,
+      reason: `This meeting hasn't started yet. It's scheduled for ${meeting.date}, ${meeting.startTime} - ${meeting.endTime}.`,
+    };
+  }
+
+  if (now > end) {
+    return {
+      allowed: false,
+      reason: `This meeting has already ended. It was scheduled for ${meeting.date}, ${meeting.startTime} - ${meeting.endTime}.`,
+    };
+  }
+
+  return { allowed: true, reason: "" };
 }
 
 export default function MeetingRoom() {
@@ -26,7 +55,25 @@ export default function MeetingRoom() {
   const [sharingScreen, setSharingScreen] = useState(false);
   const [remotePeers, setRemotePeers] = useState<RemotePeer[]>([]);
 
+  const { data: rawMeetings, isLoading: meetingsLoading } = useQuery({
+    queryKey: ["meetings"],
+    queryFn: getMeetings,
+  });
+
+  const meetings: Meeting[] = Array.isArray(rawMeetings)
+    ? rawMeetings
+    : (rawMeetings as any)?.data || [];
+
+  const currentMeeting = meetings.find(
+    (m) => (m as any).roomId === roomId || m.meetingCode === roomId || m._id === roomId
+  );
+
+  const { allowed, reason } = checkMeetingWindow(currentMeeting);
+
   useEffect(() => {
+    if (meetingsLoading) return;
+    if (!allowed) return;
+
     const socket = getSocket();
 
     // Prevent a late getUserMedia() result from creating
@@ -198,7 +245,7 @@ export default function MeetingRoom() {
       // after leaving the meeting.
       socket.disconnect();
     };
-  }, [roomId]);
+  }, [roomId, meetingsLoading, allowed]);
 
   const toggleMic = () => {
     streamRef.current?.getAudioTracks().forEach((track) => {
@@ -293,6 +340,31 @@ export default function MeetingRoom() {
     // Return to dashboard.
     navigate("/dashboard");
   };
+
+  if (meetingsLoading) {
+    return (
+      <div className="p-8 text-center text-slate-500 text-sm">
+        Checking meeting schedule...
+      </div>
+    );
+  }
+
+  if (!allowed) {
+    return (
+      <div className="p-8 max-w-md mx-auto text-center">
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-8">
+          <h2 className="text-lg font-bold text-slate-900 mb-2">Meeting Not Available</h2>
+          <p className="text-sm text-slate-500 mb-6">{reason}</p>
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-800"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4">

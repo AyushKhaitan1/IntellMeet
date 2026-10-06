@@ -3,8 +3,19 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { getMeetings, createMeeting, type Meeting } from "../api/meetings";
 
+function formatTo12Hour(time24: string): string {
+  const [hoursStr, minutes] = time24.split(":");
+  let hours = parseInt(hoursStr, 10);
+  const period = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12 || 12;
+  return `${hours}:${minutes} ${period}`;
+}
+
 export default function Dashboard() {
   const [title, setTitle] = useState("");
+  const [date, setDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -19,17 +30,21 @@ export default function Dashboard() {
     : (rawMeetings as any)?.data || [];
 
   const { mutate, isPending } = useMutation({
-    mutationFn: createMeeting,
+    mutationFn: (vars: { title: string; date: string; startTime: string; endTime: string }) =>
+      createMeeting(vars.title, vars.date, vars.startTime, vars.endTime),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["meetings"] });
       setTitle("");
+      setDate("");
+      setStartTime("");
+      setEndTime("");
     },
   });
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
-    mutate(title);
+    if (!title.trim() || !date || !startTime || !endTime) return;
+    mutate({ title, date, startTime, endTime });
   };
 
   const handleJoinByCode = (e: React.FormEvent) => {
@@ -98,10 +113,10 @@ export default function Dashboard() {
         <div className="bg-gradient-to-br from-indigo-900 to-slate-900 text-white p-6 rounded-2xl shadow-xl flex flex-col justify-between">
           <div>
             <h2 className="text-lg font-bold mb-1 flex items-center gap-2">
-              <span>🚀</span> Start a New Meeting
+              <span>🚀</span> Schedule a New Meeting
             </h2>
             <p className="text-xs text-indigo-200 mb-5">
-              Launch an instant conference with WebRTC video, live chat, and AI note-taking.
+              Pick a title, date, and time window for your conference.
             </p>
           </div>
 
@@ -112,12 +127,41 @@ export default function Dashboard() {
               placeholder="e.g. Q3 Sprint Planning & Architecture"
               className="w-full bg-indigo-950/60 border border-indigo-700/60 rounded-xl px-4 py-2.5 text-sm text-white placeholder-indigo-300/60 focus:outline-none focus:ring-2 focus:ring-indigo-400"
             />
+
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full bg-indigo-950/60 border border-indigo-700/60 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+
+            <div className="flex gap-3">
+              <input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className="w-1/2 bg-indigo-950/60 border border-indigo-700/60 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              />
+              <input
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className="w-1/2 bg-indigo-950/60 border border-indigo-700/60 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              />
+            </div>
+
+            {startTime && endTime && (
+              <p className="text-xs text-indigo-200">
+                Scheduled: {formatTo12Hour(startTime)} – {formatTo12Hour(endTime)}
+              </p>
+            )}
+
             <button
               type="submit"
               disabled={isPending}
               className="w-full bg-indigo-500 hover:bg-indigo-400 text-white font-semibold py-2.5 px-4 rounded-xl text-sm transition shadow-lg shadow-indigo-900/50 disabled:opacity-50"
             >
-              {isPending ? "Creating Space..." : "Create & Launch Meeting"}
+              {isPending ? "Scheduling..." : "Schedule Meeting"}
             </button>
           </form>
         </div>
@@ -210,9 +254,16 @@ export default function Dashboard() {
                   </div>
 
                   <h3 className="text-base font-bold text-slate-900 line-clamp-1">{meeting.title}</h3>
-                  <p className="text-xs text-slate-500 mt-1 line-clamp-2">
-                    {meeting.description || "Enterprise session with real-time video, notes, and transcription."}
-                  </p>
+
+                  {meeting.date && meeting.startTime && meeting.endTime ? (
+                    <p className="text-xs text-indigo-600 font-semibold mt-1">
+                      {meeting.date} · {formatTo12Hour(meeting.startTime)} - {formatTo12Hour(meeting.endTime)}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                      {meeting.description || "Enterprise session with real-time video, notes, and transcription."}
+                    </p>
+                  )}
                 </div>
 
                 <div className="mt-4 pt-3 border-t flex items-center justify-between text-xs text-slate-500">
