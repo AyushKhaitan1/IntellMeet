@@ -5,6 +5,9 @@ export const createMeetingSchema = z.object({
   description: z.string().max(500).optional(),
   passcode: z.string().max(20).optional(),
   workspace: z.string().optional(),
+  date: z.string().optional(),
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
   scheduledStartTime: z.string().or(z.date()).optional(),
   scheduledEndTime: z.string().or(z.date()).optional(),
   settings: z
@@ -23,6 +26,11 @@ export const updateMeetingSchema = z.object({
   description: z.string().max(500).optional(),
   status: z.enum(['scheduled', 'live', 'ended', 'cancelled']).optional(),
   passcode: z.string().max(20).optional(),
+  date: z.string().optional(),
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
+  scheduledStartTime: z.string().or(z.date()).optional(),
+  scheduledEndTime: z.string().or(z.date()).optional(),
   settings: z
     .object({
       allowScreenShare: z.boolean().optional(),

@@ -95,12 +95,20 @@ describe('IntellMeet Backend API Test Suite', () => {
       const res = await request(app)
         .post('/api/meetings')
         .set('Authorization', `Bearer ${authToken}`)
-        .send({ title: 'Frontend Sprint Review' });
+        .send({
+          title: 'Frontend Sprint Review',
+          date: '2026-10-10',
+          startTime: '10:00',
+          endTime: '11:00'
+        });
 
       assert.strictEqual(res.status, 201);
       assert.ok(res.body._id, 'Meeting must have _id');
       assert.ok(res.body.roomId, 'Meeting must have roomId');
       assert.strictEqual(res.body.title, 'Frontend Sprint Review');
+      assert.strictEqual(res.body.date, '2026-10-10');
+      assert.strictEqual(res.body.startTime, '10:00');
+      assert.strictEqual(res.body.endTime, '11:00');
       createdRoomId = res.body.roomId;
     });
 

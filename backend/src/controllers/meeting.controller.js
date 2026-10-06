@@ -19,10 +19,30 @@ export const createMeeting = async (req, res, next) => {
       description,
       passcode,
       workspace,
+      date,
+      startTime,
+      endTime,
       scheduledStartTime,
       scheduledEndTime,
       settings
     } = req.body;
+
+    let computedStartTime = scheduledStartTime ? new Date(scheduledStartTime) : new Date();
+    let computedEndTime = scheduledEndTime ? new Date(scheduledEndTime) : null;
+
+    if (date && startTime) {
+      const parsedStart = new Date(`${date}T${startTime}`);
+      if (!isNaN(parsedStart.getTime())) {
+        computedStartTime = parsedStart;
+      }
+    }
+
+    if (date && endTime) {
+      const parsedEnd = new Date(`${date}T${endTime}`);
+      if (!isNaN(parsedEnd.getTime())) {
+        computedEndTime = parsedEnd;
+      }
+    }
 
     let meetingCode = generateMeetingCode();
     let existing = await Meeting.findOne({ meetingCode });
@@ -38,8 +58,11 @@ export const createMeeting = async (req, res, next) => {
       passcode: passcode || '',
       host: req.user._id,
       workspace: workspace || null,
-      scheduledStartTime: scheduledStartTime ? new Date(scheduledStartTime) : new Date(),
-      scheduledEndTime: scheduledEndTime ? new Date(scheduledEndTime) : null,
+      date: date || '',
+      startTime: startTime || '',
+      endTime: endTime || '',
+      scheduledStartTime: computedStartTime,
+      scheduledEndTime: computedEndTime,
       settings: settings || {}
     });
 
@@ -234,7 +257,19 @@ export const updateMeeting = async (req, res, next) => {
       return next(ApiError.forbidden('Only the host or admin can update this meeting'));
     }
 
-    const { title, description, settings, status, passcode, recordingUrl } = req.body;
+    const {
+      title,
+      description,
+      settings,
+      status,
+      passcode,
+      recordingUrl,
+      date,
+      startTime,
+      endTime,
+      scheduledStartTime,
+      scheduledEndTime
+    } = req.body;
 
     if (title) meeting.title = title;
     if (description !== undefined) meeting.description = description;
@@ -242,6 +277,24 @@ export const updateMeeting = async (req, res, next) => {
     if (recordingUrl !== undefined) meeting.recordingUrl = recordingUrl;
     if (settings) meeting.settings = { ...meeting.settings, ...settings };
     if (status) meeting.status = status;
+    if (date !== undefined) meeting.date = date;
+    if (startTime !== undefined) meeting.startTime = startTime;
+    if (endTime !== undefined) meeting.endTime = endTime;
+    if (scheduledStartTime) meeting.scheduledStartTime = new Date(scheduledStartTime);
+    if (scheduledEndTime) meeting.scheduledEndTime = new Date(scheduledEndTime);
+
+    if (meeting.date && meeting.startTime) {
+      const parsedStart = new Date(`${meeting.date}T${meeting.startTime}`);
+      if (!isNaN(parsedStart.getTime())) {
+        meeting.scheduledStartTime = parsedStart;
+      }
+    }
+    if (meeting.date && meeting.endTime) {
+      const parsedEnd = new Date(`${meeting.date}T${meeting.endTime}`);
+      if (!isNaN(parsedEnd.getTime())) {
+        meeting.scheduledEndTime = parsedEnd;
+      }
+    }
 
     await meeting.save();
     await cache.del(`meeting:${meeting.meetingCode}`);

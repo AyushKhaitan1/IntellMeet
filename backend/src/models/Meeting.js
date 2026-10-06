@@ -83,6 +83,21 @@ const meetingSchema = new mongoose.Schema(
       default: 'scheduled',
       index: true
     },
+    date: {
+      type: String,
+      default: '',
+      trim: true
+    },
+    startTime: {
+      type: String,
+      default: '',
+      trim: true
+    },
+    endTime: {
+      type: String,
+      default: '',
+      trim: true
+    },
     scheduledStartTime: {
       type: Date,
       default: Date.now
